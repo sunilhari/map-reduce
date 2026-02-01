@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -11,10 +10,6 @@ import (
 
 func NewCoordinator(files []string, nReducers int) *Coordinator {
 	nMap := len(files)
-	pwd, err := os.Getwd()
-	if err != nil {
-		log.Fatal("failed to get current directory")
-	}
 	coordinator := &Coordinator{
 		mu:              sync.Mutex{},
 		inputFiles:      files,
@@ -26,8 +21,9 @@ func NewCoordinator(files []string, nReducers int) *Coordinator {
 		reduceTasksDone: false,
 		taskQueue:       make(chan Task, max(nMap, nReducers)),
 		doneChan:        make(chan TaskDone, max(nMap, nReducers)),
-		rootPath:        filepath.Join(pwd, "store"),
 	}
+	// should eliminate this probably
+	coordinator.createFolders()
 
 	coordinator.initializeTasks()
 	coordinator.schedule()
@@ -37,9 +33,9 @@ func NewCoordinator(files []string, nReducers int) *Coordinator {
 }
 
 func (c *Coordinator) createFolders() error {
-	folders := []string{"intermediate", "output"}
+	folders := []string{"intermediate"}
 	for _, folder := range folders {
-		err := os.MkdirAll(filepath.Join(c.rootPath, folder), os.ModePerm)
+		err := os.MkdirAll(filepath.Join(getDefaultPath(), folder), os.ModePerm)
 		if err != nil {
 			return err
 		}
@@ -119,7 +115,7 @@ func (c *Coordinator) scheduleMapTasks() {
 
 		if mapTasksCompleted {
 			c.mapTasksDone = true
-			fmt.Println("All Map tasks complete")
+			log.Println("All Map tasks complete")
 		}
 
 	}
@@ -158,7 +154,7 @@ func (c *Coordinator) scheduleReduceTasks() {
 
 		if allDone {
 			c.reduceTasksDone = true
-			fmt.Println("All Reduce tasks complete")
+			log.Println("All Reduce tasks complete")
 		}
 	}
 }
@@ -168,12 +164,12 @@ func (c *Coordinator) handleCompletions() {
 		c.mu.Lock()
 		if doneTask.isMapTask() {
 			c.mapTasks[doneTask.taskId].SetToCompleted()
-			fmt.Printf("MapTask %d complete", doneTask.taskId)
+			log.Printf("MapTask %d complete", doneTask.taskId)
 		}
 
 		if doneTask.isReduceTask() {
 			c.reduceTasks[doneTask.taskId].SetToCompleted()
-			fmt.Printf("ReduceTask %d complete", doneTask.taskId)
+			log.Printf("ReduceTask %d complete", doneTask.taskId)
 		}
 		c.mu.Unlock()
 	}

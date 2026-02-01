@@ -93,5 +93,4 @@ type Coordinator struct {
 
 	taskQueue chan Task
 	doneChan  chan TaskDone
-	rootPath  string
 }

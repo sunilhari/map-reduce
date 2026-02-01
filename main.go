@@ -26,7 +26,7 @@ func main() {
 	}
 
 	// should be configurable
-	// nReduces := 3
+	nReducers := 3
 	nWorkers := 5
 
 	coordinator := NewCoordinator(files, 3)
@@ -41,6 +41,39 @@ func main() {
 		time.Sleep(1 * time.Second)
 	}
 
-	fmt.Println("MapReduce job completed!")
-	fmt.Println("Check output/ directory for results")
+	log.Println("MapReduce job completed!")
+	log.Println("Check output/ directory for results")
+	combineOutputs(nReducers)
+}
+
+func combineOutputs(nReduce int) {
+	outputPath, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+	finalOutput, err := os.Create(filepath.Join(outputPath, "output", "final-output.txt"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer finalOutput.Close()
+
+	for i := 0; i < nReduce; i++ {
+		filename := fmt.Sprintf("output/mr-out-%d", i)
+		content, err := os.ReadFile(filename)
+		if err != nil {
+			continue
+		}
+		finalOutput.Write(content)
+	}
+
+	fmt.Println("Combined output written to output/final-output.txt")
+}
+
+func getDefaultPath() string {
+	pwd, err := os.Getwd()
+	if err != nil {
+		log.Fatal("failed to get current directory")
+	}
+	rootPath := filepath.Join(pwd, "store")
+	return rootPath
 }
