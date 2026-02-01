@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -24,9 +24,9 @@ func NewCoordinator(files []string, nReducers int) *Coordinator {
 		mapTasksDone:    false,
 		reduceTasks:     make([]TaskState, nReducers),
 		reduceTasksDone: false,
-		taskQueue:       make(chan Task),
-		doneChan:        make(chan TaskDone),
-		rootPath:        path.Join(pwd, "store"),
+		taskQueue:       make(chan Task, max(nMap, nReducers)),
+		doneChan:        make(chan TaskDone, max(nMap, nReducers)),
+		rootPath:        filepath.Join(pwd, "store"),
 	}
 
 	coordinator.initializeTasks()
@@ -39,7 +39,7 @@ func NewCoordinator(files []string, nReducers int) *Coordinator {
 func (c *Coordinator) createFolders() error {
 	folders := []string{"intermediate", "output"}
 	for _, folder := range folders {
-		err := os.MkdirAll(path.Join(c.rootPath, folder), os.ModePerm)
+		err := os.MkdirAll(filepath.Join(c.rootPath, folder), os.ModePerm)
 		if err != nil {
 			return err
 		}
@@ -192,4 +192,18 @@ func (c *Coordinator) NotifyTaskDone(task Task) {
 		taskId:   task.ID,
 		taskType: task.Type,
 	}
+}
+
+// Done returns true when all work is complete
+func (c *Coordinator) Done() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.reduceTasksDone
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

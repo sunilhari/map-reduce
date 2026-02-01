@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path"
+	"path/filepath"
 	"sort"
 )
 
@@ -51,7 +51,7 @@ func doMapTask(task Task, mapFunc MapFunc, rootPath string) {
 	fileHandles := make([]*os.File, nReducer)
 	for i := 0; i < nReducer; i++ {
 		fileName := fmt.Sprintf("mr-%d-%d", task.ID, i)
-		fileLocation := path.Join(rootPath, "intermediate", fileName)
+		fileLocation := filepath.Join(rootPath, "intermediate", fileName)
 		iFile, err := os.Create(fileLocation)
 
 		fileHandles[i] = iFile
@@ -80,7 +80,7 @@ func doReduceTask(task Task, reduceFunc ReduceFunc, rootPath string) {
 	var intermediate []KeyValue
 	for mapTaskID := 0; mapTaskID <= task.nMappers; mapTaskID++ {
 		fileName := fmt.Sprintf("mr-%d-%d", mapTaskID, task.ID)
-		fileLocation := path.Join(rootPath, "intermediate", fileName)
+		fileLocation := filepath.Join(rootPath, "intermediate", fileName)
 
 		file, err := os.Open(fileLocation)
 		if err != nil {
@@ -109,7 +109,7 @@ func doReduceTask(task Task, reduceFunc ReduceFunc, rootPath string) {
 	// group by keys and write to a file
 
 	fileName := fmt.Sprintf("mr-out-%d", task.ID)
-	fileLocation := path.Join(rootPath, "output", fileName)
+	fileLocation := filepath.Join(rootPath, "output", fileName)
 
 	outputFile, err := os.Create(fileLocation)
 	if err != nil {

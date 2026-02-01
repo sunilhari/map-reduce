@@ -23,7 +23,7 @@ func WordCountMap(fileName string, contents string) []KeyValue {
 	return kv
 }
 
-func ReduceCountMap(key, values []string) string {
+func WordCountReduce(key string, values []string) string {
 	count := 0
 	for _, value := range values {
 		n, _ := strconv.Atoi(value)
