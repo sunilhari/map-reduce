@@ -1,9 +1,7 @@
-package main
+package mapreduce
 
 import (
 	"log"
-	"os"
-	"path/filepath"
 	"sync"
 	"time"
 )
@@ -23,38 +21,26 @@ func NewCoordinator(files []string, nReducers int) *Coordinator {
 		doneChan:        make(chan TaskDone, max(nMap, nReducers)),
 	}
 	// should eliminate this probably
-	coordinator.createFolders()
 
 	coordinator.initializeTasks()
-	coordinator.schedule()
-	coordinator.handleCompletions()
+	go coordinator.schedule()
+	go coordinator.handleCompletions()
 
 	return coordinator
 }
 
-func (c *Coordinator) createFolders() error {
-	folders := []string{"intermediate"}
-	for _, folder := range folders {
-		err := os.MkdirAll(filepath.Join(getDefaultPath(), folder), os.ModePerm)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (c *Coordinator) initializeTasks() {
-
-	for _, mapTask := range c.mapTasks {
-		mapTask.status = TaskStatusIdle
+	for i := range c.mapTasks {
+		c.mapTasks[i].status = TaskStatusIdle // ✓ Modifies the actual element
 	}
 
-	for _, reduceTask := range c.reduceTasks {
-		reduceTask.status = TaskStatusIdle
+	for i := range c.reduceTasks {
+		c.reduceTasks[i].status = TaskStatusIdle // ✓ Modifies the actual element
 	}
 }
 
 func (c *Coordinator) schedule() {
+	log.Println("Starting dispatcher")
 	for {
 		c.mu.Lock()
 
@@ -106,8 +92,8 @@ func (c *Coordinator) scheduleMapTasks() {
 	if !assigned {
 		mapTasksCompleted := true
 
-		for _, task := range c.mapTasks {
-			if !task.Completed() {
+		for i := range c.mapTasks {
+			if !c.mapTasks[i].Completed() {
 				mapTasksCompleted = false
 				break
 			}
@@ -146,8 +132,8 @@ func (c *Coordinator) scheduleReduceTasks() {
 	if !assigned {
 		allDone := true
 
-		for _, task := range c.reduceTasks {
-			if !task.Completed() {
+		for i := range c.reduceTasks {
+			if !c.reduceTasks[i].Completed() {
 				allDone = false
 			}
 		}
@@ -160,6 +146,7 @@ func (c *Coordinator) scheduleReduceTasks() {
 }
 
 func (c *Coordinator) handleCompletions() {
+	log.Println("Starting completion handler")
 	for doneTask := range c.doneChan {
 		c.mu.Lock()
 		if doneTask.isMapTask() {

@@ -6,16 +6,19 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	mapreduce "github.com/sunilhari/map-reduce/src"
 )
 
 func main() {
 
 	// read input files directory from command line
-	inputFileDir := os.Args[2]
+	inputFileDir := os.Args[1]
+	// outputPath := os.Args[2]
 
 	// read all .txt files from the directory
-
-	files, err := filepath.Glob(filepath.Join(inputFileDir, "*.txt"))
+	inputFilePath := filepath.Join(inputFileDir, "*.txt")
+	files, err := filepath.Glob(inputFilePath)
 
 	if err != nil {
 		log.Fatalf("failed to read input files directory %s", inputFileDir)
@@ -26,14 +29,14 @@ func main() {
 	}
 
 	// should be configurable
-	nReducers := 3
+	// nReducers := 3
 	nWorkers := 5
 
-	coordinator := NewCoordinator(files, 3)
+	coordinator := mapreduce.NewCoordinator(files, 3)
 	// Start workers
 
 	for i := 0; i < nWorkers; i++ {
-		go Worker(i, coordinator, WordCountMap, WordCountReduce)
+		go mapreduce.Worker(i, coordinator, mapreduce.WordCountMap, mapreduce.WordCountReduce)
 	}
 
 	// Wait for completion
@@ -43,15 +46,15 @@ func main() {
 
 	log.Println("MapReduce job completed!")
 	log.Println("Check output/ directory for results")
-	combineOutputs(nReducers)
+	// combineOutputs(nReducers, outputPath)
 }
 
-func combineOutputs(nReduce int) {
+func combineOutputs(nReduce int, outputPath string) {
 	outputPath, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err)
 	}
-	finalOutput, err := os.Create(filepath.Join(outputPath, "output", "final-output.txt"))
+	finalOutput, err := os.Create(filepath.Join(outputPath, "final-output.txt"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -66,14 +69,5 @@ func combineOutputs(nReduce int) {
 		finalOutput.Write(content)
 	}
 
-	fmt.Println("Combined output written to output/final-output.txt")
-}
-
-func getDefaultPath() string {
-	pwd, err := os.Getwd()
-	if err != nil {
-		log.Fatal("failed to get current directory")
-	}
-	rootPath := filepath.Join(pwd, "store")
-	return rootPath
+	log.Println("Combined output written to output/final-output.txt")
 }

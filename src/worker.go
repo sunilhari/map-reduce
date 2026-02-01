@@ -1,4 +1,4 @@
-package main
+package mapreduce
 
 import (
 	"encoding/json"
@@ -18,7 +18,7 @@ func Worker(id int, coord *Coordinator, mapFunc MapFunc, reduceFunc ReduceFunc) 
 		// have to check if its a map task or reduce task or exit task
 		// if its a worker task call the mapfunction and do the work
 		// if its a reduce task call the reducefunction and do the work
-
+		log.Printf("Worker[%d] Processing task:%d\n", id, task.ID)
 		switch task.Type {
 		case TaskTypeMap:
 			doMapTask(task, mapFunc)
@@ -50,8 +50,15 @@ func doMapTask(task Task, mapFunc MapFunc) {
 	intermediateFiles := make([]*json.Encoder, nReducer)
 	fileHandles := make([]*os.File, nReducer)
 	for i := 0; i < nReducer; i++ {
-		fileName := fmt.Sprintf("mr-%d-%d", task.ID, i)
+		fileName := fmt.Sprintf("mr-%d-%d.txt", task.ID, i)
 		fileLocation := filepath.Join(getDefaultPath(), "intermediate", fileName)
+
+		dir := filepath.Dir(fileLocation)
+		err := os.MkdirAll(dir, os.ModePerm)
+		if err != nil {
+			log.Fatalf("failed to create intermediate directory")
+		}
+
 		iFile, err := os.Create(fileLocation)
 
 		fileHandles[i] = iFile
@@ -73,18 +80,18 @@ func doMapTask(task Task, mapFunc MapFunc) {
 	for _, file := range fileHandles {
 		file.Close()
 	}
-	log.Printf("Map task completed for task:%d and file:%s", task.ID, task.InputFile)
+	log.Printf("\nMap task completed for task:%d and file:%s", task.ID, task.InputFile)
 }
 func doReduceTask(task Task, reduceFunc ReduceFunc) {
 	// read all files ending with task id
 	var intermediate []KeyValue
-	for mapTaskID := 0; mapTaskID <= task.nMappers; mapTaskID++ {
-		fileName := fmt.Sprintf("mr-%d-%d", mapTaskID, task.ID)
+	for mapTaskID := 0; mapTaskID < task.nMappers; mapTaskID++ {
+		fileName := fmt.Sprintf("mr-%d-%d.txt", mapTaskID, task.ID)
 		fileLocation := filepath.Join(getDefaultPath(), "intermediate", fileName)
 
 		file, err := os.Open(fileLocation)
 		if err != nil {
-			log.Fatalf("failed to open intermediate file %s for reduce task %d", fileLocation, task.ID)
+			log.Fatalf("failed to open intermediate file %s for reduce task %d due to error %v", fileLocation, task.ID, err)
 		}
 
 		decoder := json.NewDecoder(file)
@@ -108,8 +115,13 @@ func doReduceTask(task Task, reduceFunc ReduceFunc) {
 
 	// group by keys and write to a file
 
-	fileName := fmt.Sprintf("mr-out-%d", task.ID)
+	fileName := fmt.Sprintf("mr-out-%d.txt", task.ID)
 	fileLocation := filepath.Join(getDefaultPath(), "output", fileName)
+	dir := filepath.Dir(fileLocation)
+	err := os.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		log.Fatalf("failed to create output directory")
+	}
 
 	outputFile, err := os.Create(fileLocation)
 	if err != nil {
@@ -132,7 +144,10 @@ func doReduceTask(task Task, reduceFunc ReduceFunc) {
 		}
 		output := reduceFunc(intermediate[i].Key, values)
 		// Write to output
-		log.Printf("%v %v\n", intermediate[i].Key, output)
+		_, err := fmt.Fprintf(outputFile, "%v %v\n", intermediate[i].Key, output)
+		if err != nil {
+			log.Fatalf("failed to write output file for key : %d to location %s due to error %v", intermediate[i].Key, fileLocation, err)
+		}
 
 		i = j
 	}
