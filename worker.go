@@ -11,7 +11,7 @@ import (
 
 func Worker(id int, coord *Coordinator, mapFunc MapFunc, reduceFunc ReduceFunc) {
 
-	fmt.Printf("Starting worker %d", id)
+	log.Printf("Starting worker %d", id)
 
 	for {
 		task := coord.GetTask()
@@ -21,21 +21,21 @@ func Worker(id int, coord *Coordinator, mapFunc MapFunc, reduceFunc ReduceFunc) 
 
 		switch task.Type {
 		case TaskTypeMap:
-			doMapTask(task, mapFunc, coord.rootPath)
+			doMapTask(task, mapFunc)
 			// notify coordinator that certain task is complete
 			coord.NotifyTaskDone(task)
 		case TaskTypeReduce:
-			doReduceTask(task, reduceFunc, coord.rootPath)
+			doReduceTask(task, reduceFunc)
 			// notify coordinator that certain task is complete
 			coord.NotifyTaskDone(task)
 		case TaskTypeExit:
-			fmt.Printf("Exiting worker %d", id)
+			log.Printf("Exiting worker %d", id)
 			return
 		}
 	}
 }
 
-func doMapTask(task Task, mapFunc MapFunc, rootPath string) {
+func doMapTask(task Task, mapFunc MapFunc) {
 	// read file,because map function requires file name and content
 	fileName := task.InputFile
 	nReducer := task.nReducers
@@ -51,7 +51,7 @@ func doMapTask(task Task, mapFunc MapFunc, rootPath string) {
 	fileHandles := make([]*os.File, nReducer)
 	for i := 0; i < nReducer; i++ {
 		fileName := fmt.Sprintf("mr-%d-%d", task.ID, i)
-		fileLocation := filepath.Join(rootPath, "intermediate", fileName)
+		fileLocation := filepath.Join(getDefaultPath(), "intermediate", fileName)
 		iFile, err := os.Create(fileLocation)
 
 		fileHandles[i] = iFile
@@ -75,12 +75,12 @@ func doMapTask(task Task, mapFunc MapFunc, rootPath string) {
 	}
 	log.Printf("Map task completed for task:%d and file:%s", task.ID, task.InputFile)
 }
-func doReduceTask(task Task, reduceFunc ReduceFunc, rootPath string) {
+func doReduceTask(task Task, reduceFunc ReduceFunc) {
 	// read all files ending with task id
 	var intermediate []KeyValue
 	for mapTaskID := 0; mapTaskID <= task.nMappers; mapTaskID++ {
 		fileName := fmt.Sprintf("mr-%d-%d", mapTaskID, task.ID)
-		fileLocation := filepath.Join(rootPath, "intermediate", fileName)
+		fileLocation := filepath.Join(getDefaultPath(), "intermediate", fileName)
 
 		file, err := os.Open(fileLocation)
 		if err != nil {
@@ -109,7 +109,7 @@ func doReduceTask(task Task, reduceFunc ReduceFunc, rootPath string) {
 	// group by keys and write to a file
 
 	fileName := fmt.Sprintf("mr-out-%d", task.ID)
-	fileLocation := filepath.Join(rootPath, "output", fileName)
+	fileLocation := filepath.Join(getDefaultPath(), "output", fileName)
 
 	outputFile, err := os.Create(fileLocation)
 	if err != nil {
@@ -132,7 +132,7 @@ func doReduceTask(task Task, reduceFunc ReduceFunc, rootPath string) {
 		}
 		output := reduceFunc(intermediate[i].Key, values)
 		// Write to output
-		fmt.Fprintf(outputFile, "%v %v\n", intermediate[i].Key, output)
+		log.Printf("%v %v\n", intermediate[i].Key, output)
 
 		i = j
 	}
