@@ -146,7 +146,7 @@ func doReduceTask(task Task, reduceFunc ReduceFunc) {
 		// Write to output
 		_, err := fmt.Fprintf(outputFile, "%v %v\n", intermediate[i].Key, output)
 		if err != nil {
-			log.Fatalf("failed to write output file for key : %d to location %s due to error %v", intermediate[i].Key, fileLocation, err)
+			log.Fatalf("failed to write output file for key : %s to location %s due to error %v", intermediate[i].Key, fileLocation, err)
 		}
 
 		i = j
