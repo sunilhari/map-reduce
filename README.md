@@ -117,9 +117,9 @@ $$\mathrm{reduce}(\text{apple}, [1,1,1,1]) \to (\text{apple}, 4)$$
 flowchart TD
     A[Input Data] --> B[Input Splits]
     B --> C[Mappers]
-    C -->|map(k1, v1) -> (k2, v2)| D[Partitioned Intermediate Files<br/>(mr-m-r)]
+    C -->|"map(k1, v1) → (k2, v2)"| D["Partitioned Intermediate Files\n(mr-m-r)"]
     D --> E[Shuffle Phase]
     E --> F[Sort & Group by Key]
-    F -->| (k2, [v2]) | G[Reducers]
-    G -->|reduce(k2, [v2]) -> (k3, v3)| H[Final Output<br/>(Distributed Storage)]
+    F -->|"(k2, [v2])"| G[Reducers]
+    G -->|"reduce(k2, [v2]) → (k3, v3)"| H["Final Output\n(Distributed Storage)"]
 ```
